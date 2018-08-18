@@ -13,16 +13,10 @@ public enum STM32Command {
     ReadoutUnprotect(0x92);
 
     private byte mCode;
-
     STM32Command(int c) {
         mCode = (byte)c;
     }
-
     byte getCommandCode() {
         return mCode;
-    }
-
-    byte getCommandCodeComplement() {
-        return (byte) ~mCode;
     }
 }

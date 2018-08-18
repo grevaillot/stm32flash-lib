@@ -14,38 +14,65 @@ public class STM32Flasher {
         mSTM32Device = new STM32Device(iface, mDebug);
     }
 
-    public void connect() throws IOException {
-        if (!mSTM32Device.connect())
-            System.err.println("Could not connect to STM32 device.");
-        System.out.println("Connected STM32 device.");
+    public STM32Device getDevice() {
+        return mSTM32Device;
     }
 
-    public boolean flashFirmware(ByteBuffer fw) throws IOException
+    public boolean connect() throws IOException {
+        if (!mSTM32Device.connect()) {
+            System.err.println("Could not connect to STM32 device.");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean flashFirmware(String path) throws IOException
     {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return false;
         }
 
-        //mSTM32Device.rase();
+        try {
+            STM32Firmware fw = new STM32Firmware(path);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //mSTM32Device.erase();
 
         return false;
     }
 
+    public byte[] dumpFirmware() throws IOException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return null;
+        }
 
-    public STM32Device getDevice() {
-        return mSTM32Device;
+        byte[] fw = new byte[mSTM32Device.getFlashSize()];
+
+        if (!mSTM32Device.readFlash(fw))
+            return null;
+
+        return fw;
     }
 
-    public void dumpFirmware() {
+    public boolean resetDevice() throws IOException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
 
+        // mSTM32Device.go();
+        return false;
     }
 
-    public void reset() throws IOException {
-       // mSTM32Device.go();
-    }
-
-    public void erase() {
-        mSTM32Device.eraseAll();
+    public boolean eraseFirmware() throws IOException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
+        return mSTM32Device.eraseAll();
     }
 }

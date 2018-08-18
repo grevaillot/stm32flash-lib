@@ -29,21 +29,39 @@ public class STM32DevInfo {
 
     @Override
     public String toString() {
-        return "STM32DevInfo{" +
-                "mId=" + Integer.toHexString(mId) +
-                ", mName='" + mName + '\'' +
-                ", mRamEnd=" + Integer.toHexString(mRamEnd )+
-                ", mRamStart=" + Integer.toHexString(mRamStart) +
-                ", mFlashStart=" + Integer.toHexString(mFlashStart) +
-                ", mFlashEnd=" + Integer.toHexString(mFlashEnd) +
-                ", mPagesPerSector=" + mPagesPerSector +
-                ", mPageSize=" + Arrays.toString(mPageSize) +
-                ", mOptionStart=" + Integer.toHexString(mOptionStart) +
-                ", mOptionEnd=" + Integer.toHexString(mOptionEnd) +
-                ", mMemStart=" + Integer.toHexString(mMemStart) +
-                ", mMemEnd=" + Integer.toHexString(mMemEnd)+
-                ", mFlags=" + mFlags +
+        return "STM32DevInfo {" +
+                "Id=0x" + Integer.toHexString(mId) +
+                ", Name=" + mName +
+                ", RamSize=" + getRamSize() / (1024) + "kB" +
+                ", FlashSize=" + getFlashSize() / (1024) + "kB" +
+                ", RamStart=0x" + Integer.toHexString(mRamStart) +
+                ", RamEnd=0x" + Integer.toHexString(mRamEnd )+
+                ", FlashStart=0x" + Integer.toHexString(mFlashStart) +
+                ", FlashEnd=0x" + Integer.toHexString(mFlashEnd) +
+                ", PagesPerSector=" + mPagesPerSector +
+                ", PageSize=" + Arrays.toString(mPageSize) +
+                ", OptionStart=0x" + Integer.toHexString(mOptionStart) +
+                ", OptionEnd=0x" + Integer.toHexString(mOptionEnd) +
+                ", MemStart=0x" + Integer.toHexString(mMemStart) +
+                ", MemEnd=0x" + Integer.toHexString(mMemEnd)+
+                ", Flags=" + mFlags +
                 '}';
+    }
+
+    public int getFlashSize() {
+        return mFlashEnd - mFlashStart;
+    }
+
+    public int getRamSize() {
+        return mRamEnd - mRamStart;
+    }
+
+    public int getFlashStart() {
+        return mFlashStart;
+    }
+
+    public int getRamStart() {
+        return mRamStart;
     }
 
     public enum flags_t {
