@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.util.Arrays;
 
 import static java.lang.Math.min;
 
@@ -6,8 +7,11 @@ public class STM32Device {
     private boolean mDebug = false;
 
     private static final byte INIT = 0x7F;
+
     private static final byte ACK = 0x79;
     private static final byte NACK = 0x1f;
+
+    public static final int CMD_READ_MAX_SIZE = 256;
 
     private static final STM32DevInfo mStm32DevInfoList[] = new STM32DevInfo[] {
             /* F0 */
@@ -146,25 +150,61 @@ public class STM32Device {
         int read = 0;
         System.out.println("readFlash: reading " + count / 1024 + "kB");
         while (read < count) {
-            System.out.print("\rreadFlash: " + (read * 100) / count + "%");
-            int len = min(count - read, 256);
+            int len = min(count - read, CMD_READ_MAX_SIZE);
             byte[] b = new byte[len];
             if (!cmdReadMemory(mSTM32DevInfo.getFlashStart() + read, b)) {
-                System.out.println("\nabort.");
+                System.out.println("\ncould not cmdReadMemory, abort.");
                 return false;
             }
             System.arraycopy(b, 0, flash, read, len);
             read += len;
+            System.out.print("\rreadFlash: " + (read * 100) / count + "%");
         }
         System.out.println("\ndone.");
 
-
         return true;
+    }
 
+    public boolean writeFlash(byte[] flash, boolean compare) throws IOException {
+        int count = flash.length;
+        int written = 0;
+
+        System.out.println("writeFlash: writing " + count / 1024 + "kB");
+
+        while (written < count) {
+            int len = min(count - written, CMD_READ_MAX_SIZE);
+
+            byte[] b = new byte[len];
+            System.arraycopy(flash, written, b, 0, len);
+
+            if (!cmdWriteMemory(mSTM32DevInfo.getFlashStart() + written, b)) {
+                System.err.println("\ncould not cmdWriteMemory, abort.");
+                return false;
+            }
+
+            if (compare) {
+                byte[] v = new byte[len];
+
+                if (!cmdReadMemory(mSTM32DevInfo.getFlashStart() + written, v)) {
+                    System.out.println("\ncould not cmdReadMemory, abort.");
+                    return false;
+                }
+
+                if (!Arrays.equals(v, b)) {
+                    System.err.println("\nCompare bad at 0x" + Integer.toHexString(mSTM32DevInfo.getFlashStart() + written) + ", abort.");
+                    return false;
+                }
+            }
+
+            written += len;
+            System.out.print("\rwriteFlash: " + (written * 100) / count + "%");
+        }
+
+        return false;
     }
 
     private boolean stmInit() throws IOException {
-        mUsartInterface.write(INIT);
+        write(INIT);
         if (!readAck())
             System.out.println("stmInit: returned NACK, continue - init might have been already done.");
         return true;
@@ -249,25 +289,42 @@ public class STM32Device {
         if (!writeCommand(STM32Command.ReadMemory))
             return false;
 
-        byte[] buf = new byte[5];
-        buf[0] = (byte) ((address >> 24) & 0xff);
-        buf[1] = (byte) ((address >> 16) & 0xff);
-        buf[2] = (byte) ((address >> 8) & 0xff);
-        buf[3] = (byte) ((address) & 0xff);
-        buf[4] = (byte) (buf[0] ^ buf[1] ^ buf[2] ^ buf[3]);
+        if (!writeAddress(address))
+            return false;
 
-        mUsartInterface.write(buf);
+        write(new byte[] {(byte) (len - 1), (byte) ~(len - 1)});
         if (!readAck())
             return false;
 
-        mUsartInterface.write(new byte[] {(byte) (len - 1), (byte) ~(len - 1)});
-        if (!readAck())
-            return false;
-
-        byte[] b = mUsartInterface.read(buffer.length);
+        byte[] b = read(buffer.length);
         System.arraycopy(b, 0, buffer, 0, b.length);
 
         return true;
+    }
+
+    private boolean cmdWriteMemory(int address, byte buffer[]) throws IOException {
+        if (mDebug)
+            System.out.println("cmdWriteMemory: " + buffer.length + "b @ 0x" + Integer.toHexString(address));
+
+        byte len = (byte)buffer.length;
+
+        if (buffer.length > 256)
+            return false;
+
+        if ((address & 0x3) != 0)
+            return false;
+
+        if (!writeCommand(STM32Command.WriteMemory))
+            return false;
+
+        if (!writeAddress(address))
+            return false;
+
+        write((byte) (len - 1));
+        write(buffer);
+        write((byte) (getChecksum(buffer) ^ (byte) (len - 1)));
+
+        return readAck();
     }
 
     private boolean cmdErase(byte pageCount, byte[] pages) throws IOException {
@@ -277,20 +334,20 @@ public class STM32Device {
         if (!writeCommand(STM32Command.Erase))
             return false;
 
-        mUsartInterface.write(pageCount);
+        write(pageCount);
 
         if (pageCount == (byte)0xff) {
             // Full erase.
             // XXX not tested
-            mUsartInterface.write((byte) 0x00);
+            write((byte) 0x00);
         } else {
             // XXX not tested
             byte checksum = pageCount;
             for (byte page : pages) {
-                mUsartInterface.write(page);
+                write(page);
                 checksum ^= page;
             }
-            mUsartInterface.write(checksum);
+            write(checksum);
         }
 
         return readAck();
@@ -305,20 +362,20 @@ public class STM32Device {
 
         if (msb == (byte)0xff) {
             // Full/Bank erase.
-            mUsartInterface.write(msb);
-            mUsartInterface.write(lsb);
-            mUsartInterface.write((byte) (msb ^ lsb));
+            write(msb);
+            write(lsb);
+            write((byte) (msb ^ lsb));
         } else {
             // XXX not tested
             byte checksum = msb;
             checksum ^= lsb;
             for (byte[] page : pages) {
-                mUsartInterface.write(page[0]);
-                mUsartInterface.write(page[1]);
+                write(page[0]);
+                write(page[1]);
                 checksum ^= page[0];
                 checksum ^= page[1];
             }
-            mUsartInterface.write(checksum);
+            write(checksum);
         }
         return readAck();
     }
@@ -337,9 +394,29 @@ public class STM32Device {
     }
 
     private boolean writeCommand(STM32Command command) throws IOException {
-        mUsartInterface.write(new byte[] { command.getCommandCode(), (byte) ~command.getCommandCode()});
+        write(new byte[] { command.getCommandCode(), (byte) ~command.getCommandCode()});
         return readAck();
     }
+
+    private boolean writeAddress(int address) throws IOException {
+        byte[] buf = new byte[4];
+        buf[0] = (byte) ((address >> 24) & 0xff);
+        buf[1] = (byte) ((address >> 16) & 0xff);
+        buf[2] = (byte) ((address >> 8) & 0xff);
+        buf[3] = (byte) ((address) & 0xff);
+        write(buf);
+        write(getChecksum(buf));
+
+        return readAck();
+    }
+
+    private byte getChecksum(byte[] buffer) {
+        byte cs = 0;
+        for (byte b : buffer)
+            cs ^= b;
+        return cs;
+    }
+
 
     private void write(byte b) throws IOException {
         mUsartInterface.write(b);
