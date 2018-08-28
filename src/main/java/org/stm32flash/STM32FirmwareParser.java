@@ -1,3 +1,5 @@
+package org.stm32flash;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;

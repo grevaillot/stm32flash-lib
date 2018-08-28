@@ -1,13 +1,15 @@
+package org.stm32flash;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import static java.security.MessageDigest.getInstance;
 
-class STM32Firmware {
+public class STM32Firmware {
     private byte[] mBuffer;
 
-    STM32Firmware(String path) throws Exception {
+    public STM32Firmware(String path) throws Exception {
         STM32FirmwareParser mParser;
 
         if (path.endsWith(".hex"))

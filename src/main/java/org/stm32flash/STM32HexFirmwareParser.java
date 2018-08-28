@@ -1,3 +1,5 @@
+package org.stm32flash;
+
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;

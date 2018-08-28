@@ -1,3 +1,5 @@
+package org.stm32flash;
+
 import java.util.Arrays;
 
 public class STM32DevInfo {

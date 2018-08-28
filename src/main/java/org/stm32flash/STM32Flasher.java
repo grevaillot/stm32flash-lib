@@ -1,3 +1,5 @@
+package org.stm32flash;
+
 import java.io.IOException;
 
 public class STM32Flasher {

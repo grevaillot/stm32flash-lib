@@ -1,3 +1,5 @@
+package org.stm32flash;
+
 import java.io.*;
 
 public class STM32BinFirmwareParser extends STM32FirmwareParser {
