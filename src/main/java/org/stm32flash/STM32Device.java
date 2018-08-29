@@ -291,10 +291,12 @@ public class STM32Device {
             }
 
             written += len;
-            System.out.print("\rwriteFlash: " + (written * 100) / count + "%");
+            System.out.print("\rwriteFlash: " + (written * 100) / count + "% ");
         }
 
-        return false;
+        System.out.println(" Done.");
+
+        return true;
     }
 
     private boolean stmInit() throws IOException, TimeoutException {
