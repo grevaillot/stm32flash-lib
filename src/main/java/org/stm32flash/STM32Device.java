@@ -2,6 +2,7 @@ package org.stm32flash;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.TimeoutException;
 
 import static java.lang.Math.min;
 
@@ -14,6 +15,10 @@ public class STM32Device {
     private static final byte NACK = 0x1f;
 
     public static final int CMD_READ_MAX_SIZE = 256;
+
+    private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
+    private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
+    private static final int ACK_TIMEOUT_MASS_ERASE = 30 * 1000;
 
     private static final STM32DevInfo mStm32DevInfoList[] = new STM32DevInfo[] {
             /* F0 */
@@ -120,7 +125,7 @@ public class STM32Device {
         mDebug = debug;
     }
 
-    public boolean connect() throws IOException {
+    public boolean connect() throws IOException, TimeoutException {
         if (!mIsConnected) {
             // stm init will return nack if already connected - dont run it twice.
             // also from time to time first try fails / timeout - retry before throwing exception.
@@ -130,7 +135,7 @@ public class STM32Device {
                 try {
                     stmInit();
                     break;
-                } catch (IOException e) {
+                } catch (TimeoutException e) {
                     if (retry == 0)
                         throw e;
                     System.out.println("connect: retry after " + e.toString());
@@ -164,13 +169,13 @@ public class STM32Device {
         return mIsConnected;
     }
 
-    public boolean eraseAll() throws IOException {
+    public boolean eraseAll() throws IOException, TimeoutException {
         if (mUseExtendedErase)
             return cmdExtendedErase((byte)0xff, (byte)0xff, null);
         return cmdErase((byte)0xff, null);
     }
 
-    public boolean readFlash(byte[] flash) throws IOException {
+    public boolean readFlash(byte[] flash) throws IOException, TimeoutException {
         int count = flash.length;
         int read = 0;
         System.out.println("readFlash: reading " + count / 1024 + "kB");
@@ -190,7 +195,7 @@ public class STM32Device {
         return true;
     }
 
-    public boolean writeFlash(byte[] flash, boolean compare) throws IOException {
+    public boolean writeFlash(byte[] flash, boolean compare) throws IOException, TimeoutException {
         int count = flash.length;
         int written = 0;
 
@@ -228,14 +233,14 @@ public class STM32Device {
         return false;
     }
 
-    private boolean stmInit() throws IOException {
+    private boolean stmInit() throws IOException, TimeoutException {
         write(INIT);
         if (!readAck())
             System.out.println("stmInit: returned NACK, continue - init might have been already done.");
         return true;
     }
 
-    private boolean cmdGet() throws IOException {
+    private boolean cmdGet() throws IOException, TimeoutException {
         if (!writeCommand(STM32Command.Get))
             return false;
         byte numByte = read();
@@ -265,7 +270,7 @@ public class STM32Device {
         return readAck();
     }
 
-    private boolean cmdGetVersionReadProtection() throws IOException {
+    private boolean cmdGetVersionReadProtection() throws IOException, TimeoutException {
         if (!writeCommand(STM32Command.GetVersionReadProtection))
             return false;
         byte bootVersion = read();
@@ -286,7 +291,7 @@ public class STM32Device {
         }
     }
 
-    private boolean cmdGetId() throws IOException {
+    private boolean cmdGetId() throws IOException, TimeoutException {
         if (!writeCommand(STM32Command.GetId))
             return false;
         byte numByte = read(); // 1 on stm32.. but actually two bytes for id ?
@@ -299,7 +304,7 @@ public class STM32Device {
         return readAck();
     }
 
-    private boolean cmdReadMemory(int address, byte buffer[]) throws IOException {
+    private boolean cmdReadMemory(int address, byte buffer[]) throws IOException, TimeoutException {
         if (mDebug)
             System.out.println("cmdReadMemory: " + buffer.length + "b @ 0x" + Integer.toHexString(address));
 
@@ -327,7 +332,7 @@ public class STM32Device {
         return true;
     }
 
-    private boolean cmdWriteMemory(int address, byte buffer[]) throws IOException {
+    private boolean cmdWriteMemory(int address, byte buffer[]) throws IOException, TimeoutException {
         if (mDebug)
             System.out.println("cmdWriteMemory: " + buffer.length + "b @ 0x" + Integer.toHexString(address));
 
@@ -352,7 +357,7 @@ public class STM32Device {
         return readAck();
     }
 
-    private boolean cmdErase(byte pageCount, byte[] pages) throws IOException {
+    private boolean cmdErase(byte pageCount, byte[] pages) throws IOException, TimeoutException {
         if (mDebug)
             System.out.println("cmdErase: 0x" + Integer.toHexString(pageCount));
 
@@ -378,7 +383,7 @@ public class STM32Device {
         return readAck();
     }
 
-    private boolean cmdExtendedErase(byte msb, byte lsb, byte[][] pages) throws IOException {
+    private boolean cmdExtendedErase(byte msb, byte lsb, byte[][] pages) throws IOException, TimeoutException {
         if (mDebug)
             System.out.println("cmdExtendedErase: 0x" + Integer.toHexString((msb << 8 | lsb) & 0xffff));
 
@@ -402,28 +407,36 @@ public class STM32Device {
             }
             write(checksum);
         }
-        return readAck();
+        return readAck(ACK_TIMEOUT_MASS_ERASE);
     }
 
-    private boolean readAck() throws IOException {
-        byte ack = read();
+    }
 
-        switch (ack) {
+    private boolean readAck() throws IOException, TimeoutException {
+        return readAck(ACK_TIMEOUT_DEFAULT);
+    }
+
+    private boolean readAck(int timeout) throws IOException, TimeoutException {
+        byte b;
+        switch (b = readWithTimeout(timeout)) {
             case ACK:
                 return true;
 
-            default:
             case NACK:
+                return false;
+
+            default:
+                System.err.println("readAck: err, got unexpected 0x" + Integer.toHexString(b));
                 return false;
         }
     }
 
-    private boolean writeCommand(STM32Command command) throws IOException {
+    private boolean writeCommand(STM32Command command) throws IOException, TimeoutException {
         write(new byte[] { command.getCommandCode(), (byte) ~command.getCommandCode()});
         return readAck();
     }
 
-    private boolean writeAddress(int address) throws IOException {
+    private boolean writeAddress(int address) throws IOException, TimeoutException {
         byte[] buf = new byte[4];
         buf[0] = (byte) ((address >> 24) & 0xff);
         buf[1] = (byte) ((address >> 16) & 0xff);
@@ -442,21 +455,28 @@ public class STM32Device {
         return cs;
     }
 
-
     private void write(byte b) throws IOException {
-        mUsartInterface.write(b);
+        mUsartInterface.write(new byte[] {b});
     }
 
     private void write(byte[] b) throws IOException {
         mUsartInterface.write(b);
     }
 
-    private byte[] read(int len) throws IOException {
-        return mUsartInterface.read(len);
+    private byte read() throws IOException, TimeoutException {
+        return mUsartInterface.read(1, READ_TIMEOUT_DEFAULT)[0];
     }
 
-    private byte read() throws IOException {
-        return mUsartInterface.read();
+    private byte readWithTimeout(int timeout) throws IOException, TimeoutException {
+        return mUsartInterface.read(1, timeout)[0];
+    }
+
+    private byte[] read(int len) throws IOException, TimeoutException {
+        return mUsartInterface.read(len, READ_TIMEOUT_DEFAULT);
+    }
+
+    private byte[] readWithTimeout(int len, int timeout) throws IOException, TimeoutException {
+        return mUsartInterface.read(len, timeout);
     }
 
     @Override

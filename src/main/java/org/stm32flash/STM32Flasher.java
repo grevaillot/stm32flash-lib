@@ -1,6 +1,7 @@
 package org.stm32flash;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 public class STM32Flasher {
     private boolean mDebug = false;
@@ -19,7 +20,7 @@ public class STM32Flasher {
         return mSTM32Device;
     }
 
-    public boolean connect() throws IOException {
+    public boolean connect() throws IOException, TimeoutException {
         if (!mSTM32Device.connect()) {
             System.err.println("Could not connect to STM32 device.");
             return false;
@@ -27,8 +28,7 @@ public class STM32Flasher {
         return true;
     }
 
-    public boolean flashFirmware(byte fw[], boolean erase) throws IOException
-    {
+    public boolean flashFirmware(byte fw[], boolean erase) throws IOException, TimeoutException {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return false;
@@ -44,12 +44,11 @@ public class STM32Flasher {
         return mSTM32Device.writeFlash(fw, true);
     }
 
-    public boolean flashFirmware(byte fw[]) throws IOException {
+    public boolean flashFirmware(byte fw[]) throws IOException, TimeoutException {
         return flashFirmware(fw, true);
     }
 
-    public boolean flashFirmware(String path) throws IOException
-    {
+    public boolean flashFirmware(String path) throws IOException, TimeoutException {
         STM32Firmware fw;
 
         try {
@@ -62,11 +61,11 @@ public class STM32Flasher {
         return flashFirmware(fw.getBuffer(), true);
     }
 
-    public byte[] dumpFirmware() throws IOException {
+    public byte[] dumpFirmware() throws IOException, TimeoutException {
         return dumpFirmware(mSTM32Device.getFlashSize());
     }
 
-    public byte[] dumpFirmware(int size) throws IOException {
+    public byte[] dumpFirmware(int size) throws IOException, TimeoutException {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return null;
@@ -80,7 +79,7 @@ public class STM32Flasher {
         return fw;
     }
 
-    public boolean eraseFirmware() throws IOException {
+    public boolean eraseFirmware() throws IOException, TimeoutException {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return false;
@@ -88,7 +87,7 @@ public class STM32Flasher {
         return mSTM32Device.eraseAll();
     }
 
-    public boolean resetDevice() throws IOException {
+    public boolean resetDevice() throws IOException, TimeoutException {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return false;
