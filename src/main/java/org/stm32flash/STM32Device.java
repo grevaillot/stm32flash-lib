@@ -14,7 +14,8 @@ public class STM32Device {
     private static final byte ACK = 0x79;
     private static final byte NACK = 0x1f;
 
-    public static final int CMD_READ_MAX_SIZE = 256;
+    private static final int CMD_READ_MAX_SIZE = 256;
+    private static final int CMD_WRITE_MAX_SIZE = 256;
 
     private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
     private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
@@ -202,7 +203,7 @@ public class STM32Device {
         System.out.println("writeFlash: writing " + count / 1024 + "kB");
 
         while (written < count) {
-            int len = min(count - written, CMD_READ_MAX_SIZE);
+            int len = min(count - written, CMD_WRITE_MAX_SIZE);
 
             byte[] b = new byte[len];
             System.arraycopy(flash, written, b, 0, len);
