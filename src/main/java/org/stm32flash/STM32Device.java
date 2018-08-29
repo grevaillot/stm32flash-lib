@@ -507,4 +507,20 @@ public class STM32Device {
             return -1;
         return mSTM32DevInfo.getFlashSize();
     }
+
+    public int getFlashStart() {
+        if (mSTM32DevInfo == null)
+            return -1;
+        return mSTM32DevInfo.getFlashStart();
+    }
+
+    public int getId() {
+        return mId;
+    }
+
+    public String getName() {
+        if (mSTM32DevInfo == null)
+            return "none";
+        return mSTM32DevInfo.getName();
+    }
 }

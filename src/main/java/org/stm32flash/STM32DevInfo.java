@@ -75,6 +75,10 @@ public class STM32DevInfo {
         return mPagesPerSector;
     }
 
+    public String getName() {
+        return mName;
+    }
+
     public enum flags_t {
         F_NO_ME( 1 << 0),	/* Mass-Erase not supported */
         F_OBLL( 1 << 1 ),	/* OBL_LAUNCH required */
