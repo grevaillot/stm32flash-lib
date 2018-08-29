@@ -16,8 +16,9 @@ public class STM32DevInfo {
     /* fixed size pages */
     public static final int p_128[] = { SZ_128 };
     public static final int p_256[] = { SZ_256 };
-    public static final int[] p_1k = { SZ_1K };
-    public static final int[] p_2k = { SZ_2K };
+    public static final int p_1k[] = { SZ_1K };
+    public static final int p_2k[] = { SZ_2K };
+
     /* F2 and F4 page size */
     public static final int[] f2f4 = { SZ_16K, SZ_16K, SZ_16K, SZ_16K, SZ_64K, SZ_128K };
     /* F4 dual bank page size */
@@ -64,6 +65,14 @@ public class STM32DevInfo {
 
     public int getRamStart() {
         return mRamStart;
+    }
+
+    public int[] getPagesSize() {
+        return mPageSize;
+    }
+
+    public int getPagesPerSector() {
+        return mPagesPerSector;
     }
 
     public enum flags_t {
