@@ -28,24 +28,36 @@ public class STM32Flasher {
         return true;
     }
 
-    public boolean flashFirmware(byte fw[], boolean erase) throws IOException, TimeoutException {
+    public enum EraseMode {
+        Partial,
+        Full,
+    }
+
+    public boolean flashFirmware(byte fw[], EraseMode erase, boolean verify) throws IOException, TimeoutException {
         if (!mSTM32Device.isConnected()) {
             if (!mSTM32Device.connect())
                 return false;
         }
 
-        if (erase) {
-            if (!mSTM32Device.eraseAll())
-                return false;
+        switch (erase) {
+            case Partial:
+                if (!mSTM32Device.erase(fw.length))
+                    return false;
+                break;
+
+            case Full:
+                if (!mSTM32Device.eraseAll())
+                    return false;
+                break;
         }
 
         mDebug = true;
 
-        return mSTM32Device.writeFlash(fw, true);
+        return mSTM32Device.writeFlash(fw, verify);
     }
 
     public boolean flashFirmware(byte fw[]) throws IOException, TimeoutException {
-        return flashFirmware(fw, true);
+        return flashFirmware(fw, EraseMode.Full, true);
     }
 
     public boolean flashFirmware(String path) throws IOException, TimeoutException {
@@ -58,7 +70,7 @@ public class STM32Flasher {
             return false;
         }
 
-        return flashFirmware(fw.getBuffer(), true);
+        return flashFirmware(fw.getBuffer(), EraseMode.Full, true);
     }
 
     public byte[] dumpFirmware() throws IOException, TimeoutException {
@@ -85,6 +97,14 @@ public class STM32Flasher {
                 return false;
         }
         return mSTM32Device.eraseAll();
+    }
+
+    public boolean erase(int startAddress, int length) throws IOException, TimeoutException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
+        return mSTM32Device.erase(startAddress, length);
     }
 
     public boolean resetDevice() throws IOException, TimeoutException {

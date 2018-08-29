@@ -174,9 +174,68 @@ public class STM32Device {
         return cmdGo(mSTM32DevInfo.getFlashStart());
     }
 
+    public boolean erase(int startAddress, int len) throws IOException, TimeoutException {
+        int[] pagesSizes = mSTM32DevInfo.getPagesSize();
+        int endAddress = startAddress + len;
+
+        // XXX check if endAddress = flashend. if so, send massErase.
+
+        if (pagesSizes.length > 1) {
+            System.err.println("erase: target has multiple pages size, no support yet, use EraseAll.");
+            return false;
+        }
+
+        int startPage = getPage(startAddress);
+        int endPage = getPage(endAddress);
+        int pageCount = (endPage - startPage) + 1;
+
+        if (mUseExtendedErase) {
+            if (mDebug)
+                System.out.println(pageCount + " pages to erase.");
+
+            byte[][] pageList = new byte[pageCount][2];
+            for (int i = 0; i < pageCount; i++) {
+                int page = (startPage + i);
+
+                if (mDebug)
+                    System.out.println("adding page " + page + " to list.");
+
+                pageList[i][0] = (byte) (page >> 8);
+                pageList[i][1] = (byte) (page & 0xff);
+            }
+
+            return cmdExtendedErase(pageCount - 1, pageList);
+        } else {
+            byte[] pageList = new byte[pageCount];
+            for (int i = startPage; i < endPage; i++) {
+                pageList[i] = (byte) (i);
+            }
+            return cmdErase((byte) pageCount, pageList);
+        }
+    }
+
+    public boolean erase(int len) throws IOException, TimeoutException {
+        return erase(mSTM32DevInfo.getFlashStart(), len);
+    }
+
+    private int getPage(int startAddress) {
+        if (startAddress < mSTM32DevInfo.getFlashStart() || startAddress > mSTM32DevInfo.getFlashStart() + mSTM32DevInfo.getFlashSize()) {
+            System.err.println("getPage: page is out of flash, abort.");
+            return -1;
+        }
+
+        int[] pagesSizes = mSTM32DevInfo.getPagesSize();
+        if (pagesSizes.length > 1) {
+            System.err.println("getPage: target has multiple pages size, no support yet, use EraseAll.");
+            return -1;
+        }
+
+        return (startAddress - mSTM32DevInfo.getFlashStart() ) / pagesSizes[0];
+    }
+
     public boolean eraseAll() throws IOException, TimeoutException {
         if (mUseExtendedErase)
-            return cmdExtendedErase((byte)0xff, (byte)0xff, null);
+            return cmdExtendedErase(0xffff, null);
         return cmdErase((byte)0xff, null);
     }
 
@@ -388,25 +447,27 @@ public class STM32Device {
         return readAck();
     }
 
-    private boolean cmdExtendedErase(byte msb, byte lsb, byte[][] pages) throws IOException, TimeoutException {
+    private boolean cmdExtendedErase(int pageCount, byte[][] pages) throws IOException, TimeoutException {
         if (mDebug)
-            System.out.println("cmdExtendedErase: 0x" + Integer.toHexString((msb << 8 | lsb) & 0xffff));
+            System.out.println("cmdExtendedErase: 0x" + Integer.toHexString(pageCount));
 
         if (!writeCommand(STM32Command.ExtendedErase))
             return false;
 
-        if (msb == (byte)0xff) {
+        byte b[] = new byte[2];
+
+        b[0] = (byte) (pageCount >> 8);
+        b[1] = (byte) (pageCount & 0xff);
+
+        if (b[0] == (byte)0xff) {
             // Full/Bank erase.
-            write(msb);
-            write(lsb);
-            write((byte) (msb ^ lsb));
+            write(b);
+            write(getChecksum(b));
         } else {
-            // XXX not tested
-            byte checksum = msb;
-            checksum ^= lsb;
+            byte checksum = (byte) (b[0] ^ b[1]);
+            write(b);
             for (byte[] page : pages) {
-                write(page[0]);
-                write(page[1]);
+                write(page);
                 checksum ^= page[0];
                 checksum ^= page[1];
             }
