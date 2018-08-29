@@ -8,7 +8,7 @@ public class STM32Flasher {
     private STM32Device mSTM32Device;
 
     public STM32Flasher(STM32UsartInterface iface, boolean debug) {
-        mSTM32Device = new STM32Device(iface);
+        mSTM32Device = new STM32Device(iface, debug);
         mDebug = debug;
     }
 
@@ -50,8 +50,6 @@ public class STM32Flasher {
                     return false;
                 break;
         }
-
-        mDebug = true;
 
         return mSTM32Device.writeFlash(fw, verify);
     }
