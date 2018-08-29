@@ -93,7 +93,7 @@ public class STM32Flasher {
                 return false;
         }
 
-        // mSTM32Device.cmGo();
+        mSTM32Device.runFlash();
 
         return false;
     }

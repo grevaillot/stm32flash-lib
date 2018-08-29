@@ -170,6 +170,10 @@ public class STM32Device {
         return mIsConnected;
     }
 
+    public boolean runFlash() throws IOException, TimeoutException {
+        return cmdGo(mSTM32DevInfo.getFlashStart());
+    }
+
     public boolean eraseAll() throws IOException, TimeoutException {
         if (mUseExtendedErase)
             return cmdExtendedErase((byte)0xff, (byte)0xff, null);
@@ -411,6 +415,14 @@ public class STM32Device {
         return readAck(ACK_TIMEOUT_MASS_ERASE);
     }
 
+    private boolean cmdGo(int address) throws IOException, TimeoutException {
+        if (mDebug)
+            System.out.println("cmdGo: 0x" + Integer.toHexString(address));
+
+        if (!writeCommand(STM32Command.Go))
+            return false;
+
+        return writeAddress(address);
     }
 
     private boolean readAck() throws IOException, TimeoutException {
