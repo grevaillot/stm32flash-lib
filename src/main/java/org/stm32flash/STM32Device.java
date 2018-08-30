@@ -110,6 +110,19 @@ public class STM32Device {
         }
     }
 
+    /* Reset code for ARMv7-M (Cortex-M3) and ARMv6-M (Cortex-M0)
+     * see ARMv7-M or ARMv6-M Architecture Reference Manual (table B3-8)
+     * or "The definitive guide to the ARM Cortex-M3", section 14.4.
+     */
+    static final byte stm_reset_code[] = {
+            (byte) 0x01, (byte) 0x49,		// ldr     r1, [pc, #4] ; (<AIRCR_OFFSET>)
+            (byte) 0x02, (byte) 0x4A,		// ldr     r2, [pc, #8] ; (<AIRCR_RESET_VALUE>)
+            (byte) 0x0A, (byte) 0x60,		// str     r2, [r1, #0]
+            (byte) 0xfe, (byte) 0xe7,		// endless: b endless
+            (byte) 0x0c, (byte) 0xed, (byte) 0x00, (byte) 0xe0,	// .word 0xe000ed0c <AIRCR_OFFSET> = NVIC AIRCR register address
+            (byte) 0x04, (byte) 0x00, (byte) 0xfa, (byte) 0x05	// .word 0x05fa0004 <AIRCR_RESET_VALUE> = VECTKEY | SYSRESETREQ
+    };
+
     private int mId = -1;
     private int mBootloaderVersion = -1;
     private boolean mUseExtendedErase = false;
@@ -335,6 +348,12 @@ public class STM32Device {
         complete(true);
 
         return true;
+    }
+
+    public boolean reset() throws IOException, TimeoutException {
+        if (!cmdWriteMemory(mSTM32DevInfo.getRamStart() + 6 * 1024, stm_reset_code))
+            return false;
+        return cmdGo(mSTM32DevInfo.getRamStart());
     }
 
     private boolean cmdGet() throws IOException, TimeoutException {

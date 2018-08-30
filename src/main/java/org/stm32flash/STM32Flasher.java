@@ -123,8 +123,6 @@ public class STM32Flasher {
                 return false;
         }
 
-        mSTM32Device.runFlash();
-
-        return false;
+        return mSTM32Device.reset();
     }
 }
