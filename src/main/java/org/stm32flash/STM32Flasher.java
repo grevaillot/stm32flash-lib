@@ -20,6 +20,14 @@ public class STM32Flasher {
         return mSTM32Device;
     }
 
+    public void registerProgressListener(STM32OperationProgressListener l) {
+        mSTM32Device.registerProgressListener(l);
+    }
+
+    public void unregisterProgressListener(STM32OperationProgressListener l) {
+        mSTM32Device.unregisterProgressListener(l);
+    }
+
     public boolean connect() throws IOException, TimeoutException {
         if (!mSTM32Device.connect()) {
             System.err.println("Could not connect to STM32 device.");

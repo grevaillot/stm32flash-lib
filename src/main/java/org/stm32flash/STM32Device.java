@@ -1,6 +1,7 @@
 package org.stm32flash;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
 
@@ -124,6 +125,17 @@ public class STM32Device {
     public STM32Device(STM32UsartInterface iface, boolean debug) {
         mUsartInterface = iface;
         mDebug = debug;
+    }
+
+    ArrayList<STM32OperationProgressListener> mListeners = new ArrayList();
+
+    public void registerProgressListener(STM32OperationProgressListener l) {
+        mListeners.add(l);
+    }
+
+    public void unregisterProgressListener(STM32OperationProgressListener l) {
+        if (mListeners.contains(l))
+            mListeners.remove(l);
     }
 
     public boolean connect() throws IOException, TimeoutException {
