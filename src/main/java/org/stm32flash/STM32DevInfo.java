@@ -56,7 +56,7 @@ public class STM32DevInfo {
     }
 
     public int getRamSize() {
-        return mRamEnd - mRamStart;
+        return mRamEnd - 0x20000000;
     }
 
     public int getFlashStart() {
