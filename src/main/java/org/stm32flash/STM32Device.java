@@ -138,6 +138,18 @@ public class STM32Device {
             mListeners.remove(l);
     }
 
+    private void progress(int current, int total) {
+        for (STM32OperationProgressListener l : mListeners) {
+            l.progress(current, total);
+        }
+    }
+
+    private void complete(boolean success) {
+        for (STM32OperationProgressListener l : mListeners) {
+            l.completed(success);
+        }
+    }
+
     public boolean connect() throws IOException, TimeoutException {
         if (!mIsConnected) {
             // stm init will return nack if already connected - dont run it twice.
@@ -285,6 +297,7 @@ public class STM32Device {
 
             if (!cmdWriteMemory(mSTM32DevInfo.getFlashStart() + written, b)) {
                 System.err.println("\ncould not cmdWriteMemory, abort.");
+                complete(false);
                 return false;
             }
 
@@ -293,20 +306,24 @@ public class STM32Device {
 
                 if (!cmdReadMemory(mSTM32DevInfo.getFlashStart() + written, v)) {
                     System.out.println("\ncould not cmdReadMemory, abort.");
+                    complete(false);
                     return false;
                 }
 
                 if (!Arrays.equals(v, b)) {
                     System.err.println("\nCompare bad at 0x" + Integer.toHexString(mSTM32DevInfo.getFlashStart() + written) + ", abort.");
+                    complete(false);
                     return false;
                 }
             }
 
             written += len;
             System.out.print("\rwriteFlash: " + (written * 100) / count + "% ");
+            progress(written, count);
         }
 
         System.out.println(" Done.");
+        complete(true);
 
         return true;
     }
