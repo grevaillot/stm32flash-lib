@@ -146,7 +146,7 @@ public class STM32Device {
             int retry = 2;
             while (retry-- != 0) {
                 try {
-                    stmInit();
+                    writeInit();
                     break;
                 } catch (TimeoutException e) {
                     if (retry == 0)
@@ -186,24 +186,24 @@ public class STM32Device {
         return cmdGo(mSTM32DevInfo.getFlashStart());
     }
 
-    public boolean erase(int startAddress, int len) throws IOException, TimeoutException {
+    public boolean eraseFlash(int startAddress, int len) throws IOException, TimeoutException {
         int[] pagesSizes = mSTM32DevInfo.getPagesSize();
         int endAddress = startAddress + len;
 
         // XXX check if endAddress = flashend. if so, send massErase.
 
         if (pagesSizes.length > 1) {
-            System.err.println("erase: target has multiple pages size, no support yet, use EraseAll.");
+            System.err.println("eraseFlash: target has multiple pages size, no support yet, use EraseAll.");
             return false;
         }
 
-        int startPage = getPage(startAddress);
-        int endPage = getPage(endAddress);
+        int startPage = getFlashAddressPage(startAddress);
+        int endPage = getFlashAddressPage(endAddress);
         int pageCount = (endPage - startPage) + 1;
 
         if (mUseExtendedErase) {
             if (mDebug)
-                System.out.println(pageCount + " pages to erase.");
+                System.out.println(pageCount + " pages to eraseFlash.");
 
             byte[][] pageList = new byte[pageCount][2];
             for (int i = 0; i < pageCount; i++) {
@@ -226,35 +226,35 @@ public class STM32Device {
         }
     }
 
-    public boolean erase(int len) throws IOException, TimeoutException {
-        return erase(mSTM32DevInfo.getFlashStart(), len);
+    public boolean eraseFlash(int len) throws IOException, TimeoutException {
+        return eraseFlash(mSTM32DevInfo.getFlashStart(), len);
     }
 
-    private int getPage(int startAddress) {
+    private int getFlashAddressPage(int startAddress) {
         if (startAddress < mSTM32DevInfo.getFlashStart() || startAddress > mSTM32DevInfo.getFlashStart() + mSTM32DevInfo.getFlashSize()) {
-            System.err.println("getPage: page is out of flash, abort.");
+            System.err.println("getFlashAddressPage: page is out of flash, abort.");
             return -1;
         }
 
         int[] pagesSizes = mSTM32DevInfo.getPagesSize();
         if (pagesSizes.length > 1) {
-            System.err.println("getPage: target has multiple pages size, no support yet, use EraseAll.");
+            System.err.println("getFlashAddressPage: target has multiple pages size, no support yet, use EraseAll.");
             return -1;
         }
 
         return (startAddress - mSTM32DevInfo.getFlashStart() ) / pagesSizes[0];
     }
 
-    public boolean eraseAll() throws IOException, TimeoutException {
+    public boolean eraseAllFlash() throws IOException, TimeoutException {
         if (mUseExtendedErase)
             return cmdExtendedErase(0xffff, null);
         return cmdErase((byte)0xff, null);
     }
 
-    public boolean readFlash(byte[] flash) throws IOException, TimeoutException {
+    public boolean readAllFlash(byte[] flash) throws IOException, TimeoutException {
         int count = flash.length;
         int read = 0;
-        System.out.println("readFlash: reading " + count / 1024 + "kB");
+        System.out.println("readAllFlash: reading " + count / 1024 + "kB");
         while (read < count) {
             int len = min(count - read, CMD_READ_MAX_SIZE);
             byte[] b = new byte[len];
@@ -264,7 +264,7 @@ public class STM32Device {
             }
             System.arraycopy(b, 0, flash, read, len);
             read += len;
-            System.out.print("\rreadFlash: " + (read * 100) / count + "%");
+            System.out.print("\rreadAllFlash: " + (read * 100) / count + "%");
         }
         System.out.println("\ndone.");
 
@@ -308,13 +308,6 @@ public class STM32Device {
 
         System.out.println(" Done.");
 
-        return true;
-    }
-
-    private boolean stmInit() throws IOException, TimeoutException {
-        write(INIT);
-        if (!readAck())
-            System.out.println("stmInit: returned NACK, continue - init might have been already done.");
         return true;
     }
 
@@ -445,7 +438,7 @@ public class STM32Device {
         write(pageCount);
 
         if (pageCount == (byte)0xff) {
-            // Full erase.
+            // Full eraseFlash.
             // XXX not tested
             write((byte) 0x00);
         } else {
@@ -474,7 +467,7 @@ public class STM32Device {
         b[1] = (byte) (pageCount & 0xff);
 
         if (b[0] == (byte)0xff) {
-            // Full/Bank erase.
+            // Full/Bank eraseFlash.
             write(b);
             write(getChecksum(b));
         } else {
@@ -498,6 +491,13 @@ public class STM32Device {
             return false;
 
         return writeAddress(address);
+    }
+
+    private boolean writeInit() throws IOException, TimeoutException {
+        write(INIT);
+        if (!readAck())
+            System.out.println("writeInit: returned NACK, continue - init might have been already done.");
+        return true;
     }
 
     private boolean readAck() throws IOException, TimeoutException {

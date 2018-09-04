@@ -49,12 +49,12 @@ public class STM32Flasher {
 
         switch (erase) {
             case Partial:
-                if (!mSTM32Device.erase(fw.length))
+                if (!mSTM32Device.eraseFlash(fw.length))
                     return false;
                 break;
 
             case Full:
-                if (!mSTM32Device.eraseAll())
+                if (!mSTM32Device.eraseAllFlash())
                     return false;
                 break;
         }
@@ -91,7 +91,7 @@ public class STM32Flasher {
 
         byte[] fw = new byte[size];
 
-        if (!mSTM32Device.readFlash(fw))
+        if (!mSTM32Device.readAllFlash(fw))
             return null;
 
         return fw;
@@ -102,7 +102,7 @@ public class STM32Flasher {
             if (!mSTM32Device.connect())
                 return false;
         }
-        return mSTM32Device.eraseAll();
+        return mSTM32Device.eraseAllFlash();
     }
 
     public boolean erase(int startAddress, int length) throws IOException, TimeoutException {
@@ -110,7 +110,7 @@ public class STM32Flasher {
             if (!mSTM32Device.connect())
                 return false;
         }
-        return mSTM32Device.erase(startAddress, length);
+        return mSTM32Device.eraseFlash(startAddress, length);
     }
 
     public boolean resetDevice() throws IOException, TimeoutException {
