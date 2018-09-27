@@ -20,6 +20,7 @@ public class STM32Device {
 
     private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
     private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
+    private static final int ACK_TIMEOUT_INIT = 3 * 1000;
     private static final int ACK_TIMEOUT_MASS_ERASE = 30 * 1000;
 
     private static final STM32DevInfo mStm32DevInfoList[] = new STM32DevInfo[] {
@@ -512,7 +513,7 @@ public class STM32Device {
 
     private boolean writeInit() throws IOException, TimeoutException {
         write(INIT);
-        if (!readAck())
+        if (!readAck(ACK_TIMEOUT_INIT))
             System.out.println("writeInit: returned NACK, continue - init might have been already done.");
         return true;
     }
