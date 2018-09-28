@@ -540,7 +540,7 @@ public class STM32Device {
                 return false;
 
             default:
-                System.err.println("readAck: err, got unexpected 0x" + Integer.toHexString(b));
+                System.err.println("readAck: err, got unexpected 0x" + Integer.toHexString(b & 0xff));
                 return false;
         }
     }
