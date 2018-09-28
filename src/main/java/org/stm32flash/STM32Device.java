@@ -110,8 +110,8 @@ public class STM32Device {
         }
     }
 
-    private int mId;
-    private int mBootloaderVersion;
+    private int mId = -1;
+    private int mBootloaderVersion = -1;
     private boolean mUseExtendedErase = false;
 
     private STM32DevInfo mSTM32DevInfo = null;
@@ -149,6 +149,14 @@ public class STM32Device {
         for (STM32OperationProgressListener l : mListeners) {
             l.completed(success);
         }
+    }
+
+    public void disconnect() {
+        mIsConnected = false;
+        mId = -1;
+        mBootloaderVersion = -1;
+        mUseExtendedErase = false;
+        mSTM32DevInfo = null;
     }
 
     public boolean connect() throws IOException, TimeoutException {

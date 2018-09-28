@@ -36,6 +36,10 @@ public class STM32Flasher {
         return true;
     }
 
+    public void disconnect() {
+        mSTM32Device.disconnect();
+    }
+
     public enum EraseMode {
         Partial,
         Full,
