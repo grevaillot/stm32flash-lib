@@ -282,9 +282,13 @@ public class STM32Device {
     }
 
     public boolean eraseAllFlash() throws IOException, TimeoutException {
-        if (mUseExtendedErase)
-            return cmdExtendedErase(0xffff, null);
-        return cmdErase((byte)0xff, null);
+        if (!mSTM32DevInfo.hasFlag(F_NO_ME)) {
+            if (mUseExtendedErase)
+                return cmdExtendedErase(0xffff, null);
+            return cmdErase((byte)0xff, null);
+        }
+
+        return eraseFlash(mSTM32DevInfo.getFlashStart(), mSTM32DevInfo.getFlashSize());
     }
 
     public boolean readAllFlash(byte[] flash) throws IOException, TimeoutException {
