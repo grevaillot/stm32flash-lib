@@ -227,7 +227,7 @@ public class STM32Device {
         int endAddress = startAddress + len;
 
         if (pagesSizes.length > 1) {
-            System.err.println("eraseFlash: target has multiple pages size, no support yet, use EraseAll.");
+            System.err.println("eraseFlash: target has multiple pages size, no support yet, use eraseAllFlash.");
             return false;
         }
 
@@ -298,7 +298,7 @@ public class STM32Device {
             int len = min(count - read, CMD_READ_MAX_SIZE);
             byte[] b = new byte[len];
             if (!cmdReadMemory(mSTM32DevInfo.getFlashStart() + read, b)) {
-                System.out.println("\ncould not cmdReadMemory, abort.");
+                System.err.println("\ncould not cmdReadMemory, abort.");
                 return false;
             }
             System.arraycopy(b, 0, flash, read, len);
@@ -332,7 +332,7 @@ public class STM32Device {
                 byte[] v = new byte[len];
 
                 if (!cmdReadMemory(mSTM32DevInfo.getFlashStart() + written, v)) {
-                    System.out.println("\ncould not cmdReadMemory, abort.");
+                    System.err.println("\ncould not cmdReadMemory, abort.");
                     complete(false);
                     return false;
                 }
