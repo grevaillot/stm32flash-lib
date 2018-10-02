@@ -226,20 +226,19 @@ public class STM32Device {
         int[] pagesSizes = mSTM32DevInfo.getPagesSize();
         int endAddress = startAddress + len;
 
-        // XXX check if endAddress = flashend. if so, send massErase.
-
         if (pagesSizes.length > 1) {
             System.err.println("eraseFlash: target has multiple pages size, no support yet, use EraseAll.");
             return false;
         }
 
         int startPage = getFlashAddressPage(startAddress);
-        int endPage = getFlashAddressPage(endAddress);
+        int endPage = getFlashAddressPage(endAddress - 1);
         int pageCount = (endPage - startPage) + 1;
 
+        if (mDebug)
+            System.out.println("eraseFlash 0x"+ Integer.toHexString(startAddress) + ":0x" + Integer.toHexString(endAddress) +  " : " + pageCount + " pages to erase. (" + startPage + ":" + endPage + ").");
+
         if (mUseExtendedErase) {
-            if (mDebug)
-                System.out.println(pageCount + " pages to eraseFlash.");
 
             byte[][] pageList = new byte[pageCount][2];
             for (int i = 0; i < pageCount; i++) {
