@@ -1,6 +1,7 @@
 package org.stm32flash;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class STM32DevInfo {
     static final int SZ_128 = 0x00000080;
@@ -79,20 +80,16 @@ public class STM32DevInfo {
         return mName;
     }
 
+    public boolean hasFlag(flags_t f) {
+        if (mFlags != null)
+            return mFlags.contains(f);
+        return false;
+    }
+
     public enum flags_t {
-        F_NO_ME( 1 << 0),	/* Mass-Erase not supported */
-        F_OBLL( 1 << 1 ),	/* OBL_LAUNCH required */
-        F_PEMPTY( 1 << 2),;    /* clear PEMPTY bit required */
-
-        private final int mValue;
-
-        flags_t(int i) {
-            mValue = i;
-        }
-
-        public int getValue() {
-            return mValue;
-        }
+        F_NO_ME,	/* Mass-Erase not supported */
+        F_OBLL,	/* OBL_LAUNCH required */
+        F_PEMPTY;    /* clear PEMPTY bit required */
     }
 
     private final int mId;
@@ -107,9 +104,9 @@ public class STM32DevInfo {
     private final int mOptionEnd;
     private final int mMemStart;
     private final int mMemEnd;
-    private final int mFlags;
+    private final List mFlags;
 
-    public STM32DevInfo(int id, String name, int ramStart, int ramEnd, int flashStart, int flashEnd, int pagesPerSector, int[] pageSize, int optionStart, int optionEnd, int memStart, int memEnd, int flags) {
+    public STM32DevInfo(int id, String name, int ramStart, int ramEnd, int flashStart, int flashEnd, int pagesPerSector, int[] pageSize, int optionStart, int optionEnd, int memStart, int memEnd, List flags) {
         mId = id;
         mName = name;
         mRamStart = ramStart;
