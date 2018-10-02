@@ -480,15 +480,13 @@ public class STM32Device {
         if (!writeCommand(STM32Command.Erase))
             return false;
 
-        write(pageCount);
-
         if (pageCount == (byte)0xff) {
             // Full eraseFlash.
-            // XXX not tested
+            write(pageCount);
             write((byte) 0x00);
         } else {
-            // XXX not tested
-            byte checksum = pageCount;
+            byte checksum = (byte) (pageCount - 1);
+            write((byte) (pageCount - 1));
             for (byte page : pages) {
                 write(page);
                 checksum ^= page;
@@ -496,7 +494,7 @@ public class STM32Device {
             write(checksum);
         }
 
-        return readAck();
+        return readAck(ACK_TIMEOUT_MASS_ERASE);
     }
 
     private boolean cmdExtendedErase(int pageCount, byte[][] pages) throws IOException, TimeoutException {
