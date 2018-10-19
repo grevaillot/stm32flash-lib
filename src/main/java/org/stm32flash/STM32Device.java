@@ -83,8 +83,14 @@ public class STM32Device {
 
     static public STM32DevInfo getDevInfo(int id) {
         for (STM32DevInfo d : mStm32DevInfoList) {
-            if (d.getId() == id)
-                return d;
+            if (d.getId() == id) {
+                try {
+                    return (STM32DevInfo) d.clone();
+                } catch (CloneNotSupportedException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
         }
         return null;
     }
@@ -623,6 +629,12 @@ public class STM32Device {
             sb.append(" " + mSTM32DevInfo);
         sb.append(" }");
         return sb.toString();
+    }
+
+    public void setFlashSize(Integer forcedFlashSize) {
+        if (mSTM32DevInfo == null)
+            return;
+        mSTM32DevInfo.setFlashSize(forcedFlashSize);
     }
 
     public int getFlashSize() {

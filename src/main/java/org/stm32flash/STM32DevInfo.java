@@ -3,7 +3,7 @@ package org.stm32flash;
 import java.util.Arrays;
 import java.util.List;
 
-public class STM32DevInfo {
+public class STM32DevInfo implements Cloneable {
     static final int SZ_128 = 0x00000080;
     static final int SZ_256 = 0x00000100;
     static final int SZ_1K = 0x00000400;
@@ -56,6 +56,10 @@ public class STM32DevInfo {
         return mFlashEnd - mFlashStart;
     }
 
+    public void setFlashSize(Integer flashSize) {
+        mFlashEnd = mFlashStart + flashSize;
+    }
+
     public int getRamSize() {
         return mRamEnd - 0x20000000;
     }
@@ -94,10 +98,10 @@ public class STM32DevInfo {
 
     private final int mId;
     private final String mName;
-    private final int mRamEnd;
     private final int mRamStart;
+    private int mRamEnd;
     private final int mFlashStart;
-    private final int mFlashEnd;
+    private int mFlashEnd;
     private final int mPagesPerSector;
     private final int[] mPageSize;
     private final int mOptionStart;
@@ -120,5 +124,9 @@ public class STM32DevInfo {
         mMemStart = memStart;
         mMemEnd = memEnd;
         mFlags = flags;
+    }
+
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
     }
 }
