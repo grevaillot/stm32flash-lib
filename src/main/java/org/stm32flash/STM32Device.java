@@ -21,6 +21,10 @@ public class STM32Device {
     private static final int CMD_WRITE_MAX_SIZE = 256;
     private static final int CMD_EXTENDED_ERASE_MAX_PAGES = 512;
 
+    private static final int CMD_EXTENDED_ERASE_SPECIAL_ERASE_ARG = 0xfff0;
+    private static final int CMD_EXTENDED_ERASE_BANK2_MASS_ERASE_ARG = 0xfffd;
+    private static final int CMD_EXTENDED_ERASE_BANK1_MASS_ERASE_ARG = 0xfffe;
+    private static final int CMD_EXTENDED_ERASE_GLOBAL_MASS_ERASE_ARG = 0xffff;
 
     private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
     private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
@@ -305,7 +309,7 @@ public class STM32Device {
     public boolean eraseAllFlash() throws IOException, TimeoutException {
         if (!mSTM32DevInfo.hasFlag(F_NO_ME)) {
             if (mUseExtendedErase)
-                return cmdExtendedErase(0xffff, null);
+                return cmdExtendedErase(CMD_EXTENDED_ERASE_GLOBAL_MASS_ERASE_ARG, null);
             return cmdErase((byte)0xff, null);
         }
 
@@ -536,8 +540,8 @@ public class STM32Device {
         b[0] = (byte) (pageCount >> 8);
         b[1] = (byte) (pageCount & 0xff);
 
-        if (b[0] == (byte)0xff) {
-            // Full/Bank eraseFlash.
+        if (pageCount >= CMD_EXTENDED_ERASE_SPECIAL_ERASE_ARG) {
+            // Full/Bank1-2/special extended erase Flash command.
             write(b);
             write(getChecksum(b));
         } else {
