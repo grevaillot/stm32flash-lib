@@ -19,6 +19,8 @@ public class STM32Device {
 
     private static final int CMD_READ_MAX_SIZE = 256;
     private static final int CMD_WRITE_MAX_SIZE = 256;
+    private static final int CMD_EXTENDED_ERASE_MAX_PAGES = 512;
+
 
     private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
     private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
@@ -251,19 +253,27 @@ public class STM32Device {
             System.out.println("eraseFlash 0x"+ Integer.toHexString(startAddress) + ":0x" + Integer.toHexString(endAddress) +  " : " + pageCount + " pages to erase. (" + startPage + ":" + endPage + ").");
 
         if (mUseExtendedErase) {
+            int pagesToErase = pageCount;
+            while (pagesToErase > 0) {
+                // we need limit number of erased pages per extended erase command
+                // because some boots apparently do not like massive page list..
+                pageCount = Math.min(pagesToErase, CMD_EXTENDED_ERASE_MAX_PAGES);
 
-            byte[][] pageList = new byte[pageCount][2];
-            for (int i = 0; i < pageCount; i++) {
-                int page = (startPage + i);
+                byte[][] pageList = new byte[pageCount][2];
+                for (int i = 0; i < pageCount; i++) {
+                    int page = (startPage + i);
+                    if (mDebug)
+                        System.out.println("adding page " + page + " to list.");
+                    pageList[i][0] = (byte) (page >> 8);
+                    pageList[i][1] = (byte) (page & 0xff);
+                }
+                if (!cmdExtendedErase(pageCount - 1, pageList))
+                    return false;
 
-                if (mDebug)
-                    System.out.println("adding page " + page + " to list.");
-
-                pageList[i][0] = (byte) (page >> 8);
-                pageList[i][1] = (byte) (page & 0xff);
+                startPage += pageCount;
+                pagesToErase -= pageCount;
             }
-
-            return cmdExtendedErase(pageCount - 1, pageList);
+            return true;
         } else {
             byte[] pageList = new byte[pageCount];
             for (int i = startPage; i < endPage; i++) {
