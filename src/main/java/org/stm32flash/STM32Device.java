@@ -294,13 +294,13 @@ public class STM32Device {
     private int getFlashAddressPage(int startAddress) {
         if (startAddress < mSTM32DevInfo.getFlashStart() || startAddress > mSTM32DevInfo.getFlashStart() + mSTM32DevInfo.getFlashSize()) {
             System.err.println("getFlashAddressPage: page is out of flash, abort.");
-            return -1;
+            throw new IllegalArgumentException("page is out of flash");
         }
 
         int[] pagesSizes = mSTM32DevInfo.getPagesSize();
         if (pagesSizes.length > 1) {
             System.err.println("getFlashAddressPage: target has multiple pages size, no support yet, use EraseAll.");
-            return -1;
+            throw new UnsupportedOperationException("target has multiple pages size, no support yet, use EraseAll.");
         }
 
         return (startAddress - mSTM32DevInfo.getFlashStart() ) / pagesSizes[0];
