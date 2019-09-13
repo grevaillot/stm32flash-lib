@@ -40,6 +40,41 @@ public class STM32Flasher {
         mSTM32Device.disconnect();
     }
 
+    public boolean unlockFlashWrite() throws IOException, TimeoutException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+            return false;
+        }
+        return mSTM32Device.writeUnprotect();
+    }
+
+    public boolean lockFlashWrite() throws IOException, TimeoutException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
+        return mSTM32Device.writeProtect();
+    }
+
+
+    public boolean lockFlashRead() throws IOException, TimeoutException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
+        return mSTM32Device.readoutProtect();
+    }
+
+
+    public boolean unlockFlashRead() throws IOException, TimeoutException {
+        if (!mSTM32Device.isConnected()) {
+            if (!mSTM32Device.connect())
+                return false;
+        }
+        return mSTM32Device.readoutUnprotect();
+    }
+
     public enum EraseMode {
         Partial,
         Full,

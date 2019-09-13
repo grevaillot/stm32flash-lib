@@ -1,6 +1,7 @@
 package org.stm32flash;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
@@ -19,7 +20,7 @@ public class STM32Device {
 
     private static final int CMD_READ_MAX_SIZE = 256;
     private static final int CMD_WRITE_MAX_SIZE = 256;
-    private static final int CMD_EXTENDED_ERASE_MAX_PAGES = 512;
+    private static final int CMD_EXTENDED_ERASE_MAX_PAGES = 256;
 
     enum eraseParam {
         MASS_ERASE((byte) 0xff);
@@ -30,8 +31,6 @@ public class STM32Device {
         }
     }
 
-    private static final int READ_TIMEOUT_DEFAULT = 1 * 1000;
-    private static final int ACK_TIMEOUT_DEFAULT = 1 * 1000;
     enum ExtendedEraseParam {
         BANK2_ERASE(0xfffd),
         BANK1_ERASE(0xfffe),
@@ -49,6 +48,9 @@ public class STM32Device {
             return b;
         }
     }
+
+    private static final int READ_TIMEOUT_DEFAULT = 4 * 1000;
+    private static final int ACK_TIMEOUT_DEFAULT = 10 * 1000;
     private static final int ACK_TIMEOUT_INIT = 3 * 1000;
     private static final int ACK_TIMEOUT_MASS_ERASE = 30 * 1000;
 
@@ -282,13 +284,16 @@ public class STM32Device {
         int pageCount = (endPage - startPage) + 1;
 
         if (mDebug)
-            System.out.println("eraseFlash 0x"+ Integer.toHexString(startAddress) + ":0x" + Integer.toHexString(endAddress) +  " : " + pageCount + " pages to erase. (" + startPage + ":" + endPage + ").");
+            System.out.println("eraseFlash 0x"+ Integer.toHexString(startAddress) + ":0x" + Integer.toHexString(endAddress) +  " : " +
+                    pageCount + " " + pagesSizes[0] + "b pages to erase. (" + startPage + ":" + endPage + ").");
 
         if (mUseExtendedErase) {
             int pagesToErase = pageCount;
             while (pagesToErase > 0) {
                 // we need limit number of erased pages per extended erase command
-                // because some boots apparently do not like massive page list..
+                // because some devices apparently do not like massive page list.
+                // nb: AN mention a maxium number of sector per device for that
+                // command, but this does not seem to be specified anywhere.
                 pageCount = Math.min(pagesToErase, CMD_EXTENDED_ERASE_MAX_PAGES);
 
                 byte[][] pageList = new byte[pageCount][2];
@@ -386,6 +391,79 @@ public class STM32Device {
             written += len;
             System.out.print("\rwriteFlash: " + (written * 100) / count + "% ");
             progress(written, count);
+        }
+
+        System.out.println(" Done.");
+        complete(true);
+
+        return true;
+    }
+
+    public boolean readoutProtect() throws IOException, TimeoutException {
+        return readoutProtect(mSTM32DevInfo.getFlashStart(), mSTM32DevInfo.getFlashSize());
+    }
+
+    private boolean readoutProtect(int start, int len) throws IOException, TimeoutException {
+        return multiplePageCommand(STM32Command.ReadoutProtect, start, len);
+    }
+
+    public boolean readoutUnprotect() throws IOException, TimeoutException {
+        return readoutUnprotect(mSTM32DevInfo.getFlashStart(), mSTM32DevInfo.getFlashSize());
+    }
+
+    private boolean readoutUnprotect(int start, int len) throws IOException, TimeoutException {
+        return multiplePageCommand(STM32Command.ReadoutUnprotect, start, len);
+    }
+
+    public boolean writeUnprotect() throws IOException, TimeoutException {
+        return writeUnprotect(mSTM32DevInfo.getFlashStart(), mSTM32DevInfo.getFlashSize());
+    }
+
+    private boolean writeUnprotect(int start, int len) throws IOException, TimeoutException {
+        return multiplePageCommand(STM32Command.WriteUnprotect, start, len);
+    }
+
+    public boolean writeProtect() throws IOException, TimeoutException {
+        return writeProtect(mSTM32DevInfo.getFlashStart(), mSTM32DevInfo.getFlashSize());
+    }
+
+    private boolean writeProtect(int start, int len) throws IOException, TimeoutException {
+        return multiplePageCommand(STM32Command.WriteProtect, start, len);
+    }
+
+    private boolean multiplePageCommand(STM32Command command, int startAddress, int len) throws IOException, TimeoutException {
+        int[] pagesSizes = mSTM32DevInfo.getPagesSize();
+        int endAddress = startAddress + len;
+
+        if (pagesSizes.length > 1)
+            throw new UnsupportedOperationException("target has multiple pages size, no support yet, use EraseAll.");
+
+        int startPage = getFlashAddressPage(startAddress);
+        int endPage = getFlashAddressPage(endAddress - 1);
+        int pageCount = (endPage - startPage) + 1;
+
+        if (mDebug)
+            System.out.println("multiplePageCommand " + command + " 0x"+ Integer.toHexString(startAddress) + ":0x" + Integer.toHexString(endAddress) +  " : " +
+                    pageCount + " " + pagesSizes[0] + "b pages. (" + startPage + ":" + endPage + ").");
+
+        int pagesToErase = pageCount;
+        while (pagesToErase > 0) {
+            pageCount = Math.min(pagesToErase, 255);
+
+            byte[][] pageList = new byte[pageCount][2];
+            for (int i = 0; i < pageCount; i++) {
+                int page = (startPage + i);
+                if (mDebug)
+                    System.out.println("adding page " + page + " to list.");
+                pageList[i][0] = (byte) (page >> 8);
+                pageList[i][1] = (byte) (page & 0xff);
+            }
+
+            if (!cmdGenericReadWriteProtectUnprotect(command, pageList))
+                return false;
+
+            startPage += pageCount;
+            pagesToErase -= pageCount;
         }
 
         System.out.println(" Done.");
@@ -572,6 +650,9 @@ public class STM32Device {
         if (mDebug)
             System.out.println("cmdExtendedErase: " + pages.length + " pages");
 
+        if (pages.length > 512)
+            System.out.println("cmdExtendedErase: Sending command with " + pages.length + " pages, brace yourself for strange behaviour.");
+
         if (!writeCommand(STM32Command.ExtendedErase))
             return false;
 
@@ -593,6 +674,21 @@ public class STM32Device {
         write(getChecksum(b));
 
         return readAck(ACK_TIMEOUT_MASS_ERASE);
+    }
+
+    private boolean cmdGenericReadWriteProtectUnprotect(STM32Command command, byte[][] pages) throws IOException, TimeoutException {
+        if (mDebug)
+            System.out.println(command + ": " + pages.length + " pages");
+
+        if (pages.length > 255)
+            return false;
+
+        if (!writeCommand(command))
+            return false;
+
+        writePagesWithChecksum(pages);
+
+        return readAck(ACK_TIMEOUT_DEFAULT);
     }
 
     private boolean cmdGo(int address) throws IOException, TimeoutException {
@@ -632,6 +728,8 @@ public class STM32Device {
     }
 
     private boolean writeCommand(STM32Command command) throws IOException, TimeoutException {
+        if (mDebug)
+            System.out.println("writeCommand: " + command + " 0x" + Integer.toHexString(command.getCommandCode() & 0xff));
         write(new byte[] { command.getCommandCode(), (byte) ~command.getCommandCode()});
         return readAck();
     }
